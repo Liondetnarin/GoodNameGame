@@ -11,6 +11,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+// login
 function login() {
   const player = document.getElementById("username").value.trim();
   const password = document.getElementById("password").value;
@@ -33,33 +34,56 @@ function login() {
       }
     }
 
-    // ถ้ายังไม่มี หรือ password ถูกต้อง
+    // คำนวณคะแนน และเก็บเวลา
     const score = calculateScore(word);
+    const now = firebase.database.ServerValue.TIMESTAMP; // ✅ ใช้เวลาเซิร์ฟเวอร์
+
+    // บันทึกข้อมูลใหม่ลง Firebase
     userRef.set({
       word,
       score,
-      password
+      password,
+      time: now   // ✅ เก็บ timestamp ลงไป
     });
 
     alert("บันทึกชื่อสำเร็จ!");
   });
 }
 
-// อัปเดต Leaderboard
-db.ref("players").on("value", snapshot => {
-  const data = snapshot.val() || {};
-  const sorted = Object.entries(data).sort((a, b) => b[1].score - a[1].score);
-  const leaderboard = document.getElementById("leaderboard");
-  leaderboard.innerHTML = "";
 
-  sorted.forEach(([player, { word, score }]) => {
-    const li = document.createElement("li");
-    li.textContent = `${player} ➜ "${word}" = ${score} คะแนน`;
-    leaderboard.appendChild(li);
+// อัปเดต Leaderboard
+function loadLeaderboard() {
+  db.ref("players").on("value", (snapshot) => {
+    const data = snapshot.val() || {};
+    const sorted = Object.entries(data)
+      .map(([username, player]) => ({
+        username,
+        word: player.word,
+        score: player.score,
+        time: player.time || 0
+      }))
+      .sort((a, b) => {
+        if (b.score === a.score) {
+          return a.time - b.time;  // คนพิมพ์ก่อน (timestamp น้อยกว่า) อยู่ก่อน
+        }
+        return b.score - a.score;  // เรียงคะแนนจากมากไปน้อย
+      });
+
+    const leaderboard = document.getElementById("leaderboard");
+    leaderboard.innerHTML = "";
+
+    sorted.forEach(({ username, word, score }, index) => {
+      const li = document.createElement("li");
+      li.textContent = `#${index + 1} ${word} (${username}) - ${score} คะแนน`;
+      leaderboard.appendChild(li);
+    });
   });
-});
+}
+
 
 function calculateScore(word) {
+  if (!word || word.length < 3) return 0;
+
   const baseScoreTable = {
     A:1, B:3, C:3, D:2, E:1, F:4, G:2, H:4, I:1, J:8, K:5,
     L:1, M:3, N:1, O:1, P:3, Q:10, R:1, S:1, T:1, U:1,
@@ -68,69 +92,56 @@ function calculateScore(word) {
 
   const bonusPairs = ["TH", "IN", "ER", "ON", "AN"];
   const penaltyPairs = ["QU", "XZ", "JK", "QZ"];
-
-  // 3 ตัวโบนัส เช่น "ING", "EST", "ED"
   const tripleBonus = ["ING", "EST", "ED"];
 
-  let score = 0;
-  let wordUpper = word.toUpperCase();
+  const MAX_REPEAT_COUNT = 2; // นับคะแนนตัวละไม่เกิน 2 ครั้ง
+
+  const wordUpper = word.toUpperCase();
   let letterCount = {};
+  let score = 0;
 
-  // หักคะแนนถ้าคำสั้นเกินไป (<3)
-  if (wordUpper.length < 3) return 0;
-
-  // นับตัวอักษรและคะแนนพื้นฐาน
+  // 1. นับคะแนนตัวอักษร แต่ละตัวนับแค่ MAX_REPEAT_COUNT ครั้ง
   for (let i = 0; i < wordUpper.length; i++) {
     const ch = wordUpper[i];
-    score += baseScoreTable[ch] || 0;
     letterCount[ch] = (letterCount[ch] || 0) + 1;
+    if (letterCount[ch] <= MAX_REPEAT_COUNT) {
+      score += baseScoreTable[ch] || 0;
+    }
+    // ถ้าซ้ำเกิน MAX_REPEAT_COUNT ไม่ได้คะแนนเพิ่ม
   }
 
-  // เช็คคู่โบนัส/หักคะแนน
+  // 2. โบนัสคู่ตัวอักษร (แต่ละคู่เพิ่มแค่ 3 คะแนน)
   for (let i = 0; i < wordUpper.length - 1; i++) {
-    const pair = wordUpper.substring(i, i+2);
-    if (bonusPairs.includes(pair)) score += 5;
-    if (penaltyPairs.includes(pair)) score -= 5;
-  }
-
-  // เช็คโบนัส 3 ตัว
-  for (let i = 0; i < wordUpper.length - 2; i++) {
-    const triple = wordUpper.substring(i, i+3);
-    if (tripleBonus.includes(triple)) score += 8;
-  }
-
-  // โบนัสตัวขึ้นต้น ถ้าขึ้นต้นด้วย Q,Z,X ให้คูณ 2.5
-  if (["Q", "Z", "X"].includes(wordUpper[0])) score *= 2.5;
-
-  // หักคะแนนถ้าตัวอักษรซ้ำเกิน 2 ครั้ง (แต่ละตัว)
-  for (let ch in letterCount) {
-    if (letterCount[ch] > 2) {
-      // หักหนักขึ้นตามจำนวนที่เกินมา (แต่หักไม่เกิน 15)
-      let penalty = Math.min(15, (letterCount[ch] - 2) * 5);
-      score -= penalty;
+    const pair = wordUpper.substring(i, i + 2);
+    if (bonusPairs.includes(pair)) {
+      score += 3;
+    }
+    if (penaltyPairs.includes(pair)) {
+      score -= 3;
     }
   }
 
-  // หักคะแนนถ้าคำยาวเกิน 10 ตัว (ป้องกันพิมพ์ยาวเกิน)
+  // 3. โบนัส 3 ตัว (แต่ละชุดเพิ่ม 5 คะแนน)
+  for (let i = 0; i < wordUpper.length - 2; i++) {
+    const triple = wordUpper.substring(i, i + 3);
+    if (tripleBonus.includes(triple)) {
+      score += 5;
+    }
+  }
+
+  // 4. หักคะแนนคำยาวเกิน 10 ตัว ตัวละ 4 คะแนน (แรงกว่าของเก่า)
   if (wordUpper.length > 10) {
-    score -= (wordUpper.length - 10) * 3;
+    score -= (wordUpper.length - 10) * 4;
   }
 
-  // โบนัสถ้าคำมีสระเยอะ (>=40% ของคำ) +5 คะแนน
-  const vowels = ["A","E","I","O","U"];
-  let vowelCount = 0;
-  for (let ch of vowels) {
-    vowelCount += letterCount[ch] || 0;
-  }
-  if (vowelCount / wordUpper.length >= 0.4) {
-    score += 5;
-  }
-
-  // หักคะแนนถ้าคำมีตัวอักษรพิเศษ (ไม่ใช่ A-Z)
+  // 5. หักคะแนนถ้าคำมีตัวอักษรพิเศษ (ไม่ใช่ A-Z) หัก 25 คะแนน
   if (/[^A-Z]/.test(wordUpper)) {
-    score -= 20;
+    score -= 25;
   }
 
-  // ห้ามคะแนนติดลบ
-  return Math.max(0, Math.round(score));
+  // 6. หักคะแนนถ้าคำสั้นเกินไป (น้อยกว่า 3) แต่เผื่อไว้นิดหน่อย (นับเป็น 0 แล้วตอนต้น)
+  // ไม่ต้องทำอะไร
+
+  // 7. ห้ามคะแนนติดลบ
+  return Math.max(0, score);
 }
