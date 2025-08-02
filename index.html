@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Good Name Game</title>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body>
+  <h2>Good Name Game</h2>
+
+  <input id="playerName" placeholder="ชื่อผู้เล่น">
+  <input id="wordInput" placeholder="ใส่ชื่อภาษาอังกฤษ">
+  <br><button onclick="submitName()">ส่งชื่อ</button>
+
+  <h3>Leaderboard</h3>
+  <ul id="leaderboard"></ul>
+
+  <script src="main.js"></script>
+</body>
+</html>
