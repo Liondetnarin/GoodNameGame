@@ -59,41 +59,78 @@ db.ref("players").on("value", snapshot => {
   });
 });
 
-// ตารางคะแนนตัวอักษร
-const scoreTable = {
-  A:1, B:3, C:3, D:2, E:1, F:4, G:2, H:4, I:1, J:8, K:5,
-  L:1, M:3, N:1, O:1, P:3, Q:10, R:1, S:1, T:1, U:1,
-  V:4, W:4, X:8, Y:4, Z:10
-};
-
-const bonusPairs = ["TH", "IN", "ER", "ON", "AN"];
-const penaltyPairs = ["QU", "XZ", "JK", "QZ"];
-
 function calculateScore(word) {
+  const baseScoreTable = {
+    A:1, B:3, C:3, D:2, E:1, F:4, G:2, H:4, I:1, J:8, K:5,
+    L:1, M:3, N:1, O:1, P:3, Q:10, R:1, S:1, T:1, U:1,
+    V:4, W:4, X:8, Y:4, Z:10
+  };
+
+  const bonusPairs = ["TH", "IN", "ER", "ON", "AN"];
+  const penaltyPairs = ["QU", "XZ", "JK", "QZ"];
+
+  // 3 ตัวโบนัส เช่น "ING", "EST", "ED"
+  const tripleBonus = ["ING", "EST", "ED"];
+
   let score = 0;
   let wordUpper = word.toUpperCase();
   let letterCount = {};
 
+  // หักคะแนนถ้าคำสั้นเกินไป (<3)
+  if (wordUpper.length < 3) return 0;
+
+  // นับตัวอักษรและคะแนนพื้นฐาน
   for (let i = 0; i < wordUpper.length; i++) {
     const ch = wordUpper[i];
-    score += scoreTable[ch] || 0;
+    score += baseScoreTable[ch] || 0;
     letterCount[ch] = (letterCount[ch] || 0) + 1;
   }
 
-  // คู่ตัวอักษร
+  // เช็คคู่โบนัส/หักคะแนน
   for (let i = 0; i < wordUpper.length - 1; i++) {
-    const pair = wordUpper[i] + wordUpper[i + 1];
+    const pair = wordUpper.substring(i, i+2);
     if (bonusPairs.includes(pair)) score += 5;
     if (penaltyPairs.includes(pair)) score -= 5;
   }
 
-  // โบนัสตัวขึ้นต้น
-  if (["Q", "Z", "X"].includes(wordUpper[0])) score *= 2;
-
-  // ตัวซ้ำเกิน 3
-  for (let ch in letterCount) {
-    if (letterCount[ch] >= 3) score -= 3;
+  // เช็คโบนัส 3 ตัว
+  for (let i = 0; i < wordUpper.length - 2; i++) {
+    const triple = wordUpper.substring(i, i+3);
+    if (tripleBonus.includes(triple)) score += 8;
   }
 
-  return Math.max(0, score);
+  // โบนัสตัวขึ้นต้น ถ้าขึ้นต้นด้วย Q,Z,X ให้คูณ 2.5
+  if (["Q", "Z", "X"].includes(wordUpper[0])) score *= 2.5;
+
+  // หักคะแนนถ้าตัวอักษรซ้ำเกิน 2 ครั้ง (แต่ละตัว)
+  for (let ch in letterCount) {
+    if (letterCount[ch] > 2) {
+      // หักหนักขึ้นตามจำนวนที่เกินมา (แต่หักไม่เกิน 15)
+      let penalty = Math.min(15, (letterCount[ch] - 2) * 5);
+      score -= penalty;
+    }
+  }
+
+  // หักคะแนนถ้าคำยาวเกิน 10 ตัว (ป้องกันพิมพ์ยาวเกิน)
+  if (wordUpper.length > 10) {
+    score -= (wordUpper.length - 10) * 3;
+  }
+
+  // โบนัสถ้าคำมีสระเยอะ (>=40% ของคำ) +5 คะแนน
+  const vowels = ["A","E","I","O","U"];
+  let vowelCount = 0;
+  for (let ch of vowels) {
+    vowelCount += letterCount[ch] || 0;
+  }
+  if (vowelCount / wordUpper.length >= 0.4) {
+    score += 5;
+  }
+
+  // หักคะแนนถ้าคำมีตัวอักษรพิเศษ (ไม่ใช่ A-Z)
+  if (/[^A-Z]/.test(wordUpper)) {
+    score -= 20;
+  }
+
+  // ห้ามคะแนนติดลบ
+  return Math.max(0, Math.round(score));
 }

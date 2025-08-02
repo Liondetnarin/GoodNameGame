@@ -1,0 +1,129 @@
+/* style.css */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #f0f4f8, #d9e2ec);
+  color: #333;
+  padding: 20px;
+  max-width: 480px;
+  margin: 40px auto;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  border-radius: 12px;
+  user-select: none;
+}
+
+h2 {
+  font-size: 2.4rem;
+  color: #2c3e50;
+  margin-bottom: 20px;
+  text-align: center;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+}
+
+input {
+  display: block;
+  width: 100%;
+  padding: 12px 15px;
+  margin: 12px 0;
+  font-size: 16px;
+  border: 2px solid #a3b1c6;
+  border-radius: 10px;
+  box-sizing: border-box;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+input:focus {
+  border-color: #3498db;
+  box-shadow: 0 0 8px #3498db;
+  outline: none;
+}
+
+button {
+  width: 100%;
+  padding: 14px 0;
+  background-color: #3498db;
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 6px 12px rgba(52, 152, 219, 0.5);
+  transition: background-color 0.3s ease, transform 0.15s ease;
+  margin-top: 10px;
+}
+
+button:hover {
+  background-color: #2980b9;
+  transform: scale(1.05);
+  box-shadow: 0 8px 16px rgba(41, 128, 185, 0.6);
+}
+
+button:active {
+  transform: scale(0.98);
+  box-shadow: 0 4px 8px rgba(41, 128, 185, 0.5);
+}
+
+h3 {
+  margin-top: 40px;
+  font-size: 1.8rem;
+  color: #2c3e50;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.05);
+}
+
+ul#leaderboard {
+  list-style: none;
+  padding: 0;
+  margin-top: 25px;
+}
+
+ul#leaderboard li {
+  background: #ffffff;
+  margin: 10px auto;
+  padding: 14px 20px;
+  border-radius: 14px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+  font-weight: 600;
+  color: #34495e;
+  text-align: left;
+  transition: background-color 0.25s ease;
+  position: relative;
+}
+
+/* Top 3 styling */
+ul#leaderboard li:nth-child(1) {
+  background: linear-gradient(90deg, #f39c12, #f1c40f);
+  color: white;
+  font-weight: 700;
+  box-shadow: 0 8px 14px rgba(243,156,18,0.6);
+}
+
+ul#leaderboard li:nth-child(2) {
+  background: linear-gradient(90deg, #bdc3c7, #7f8c8d);
+  color: white;
+  font-weight: 700;
+  box-shadow: 0 8px 14px rgba(127,140,141,0.6);
+}
+
+ul#leaderboard li:nth-child(3) {
+  background: linear-gradient(90deg, #cd7f32, #b87333);
+  color: white;
+  font-weight: 700;
+  box-shadow: 0 8px 14px rgba(184,115,51,0.6);
+}
+
+/* Numbering */
+ul#leaderboard li::before {
+  content: counter(item) ". ";
+  counter-increment: item;
+  font-weight: 700;
+  margin-right: 10px;
+  color: #7f8c8d;
+}
+
+ul#leaderboard {
+  counter-reset: item;
+}
